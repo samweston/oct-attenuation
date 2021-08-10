@@ -71,7 +71,7 @@ def read_txt_array_scan(directory, file_format):
     # Check if cache file exists
     if cache_file_path.is_file():
         print('Reading cache file ({})'.format(cache_file_path))
-        full_array = np.load(cache_file_path)
+        raw_array = np.load(cache_file_path)
     else:
         dimensions = scan_txt_dimensions(directory, file_format)
 
@@ -79,7 +79,7 @@ def read_txt_array_scan(directory, file_format):
         print('rows = {}'.format(str(dimensions[1])))    # Number of lines in a txt file.
         print('depth = {}'.format(str(dimensions[0])))   # Number of txt files.
 
-        full_array = np.empty(dimensions)
+        raw_array = np.empty(dimensions)
 
         for b in range(0, dimensions[0]):
             # Can potentially multi-thread this. Should be faster.
@@ -89,19 +89,45 @@ def read_txt_array_scan(directory, file_format):
             
             arr = read_txt_array_file(file_path)
                 
-            full_array[b] = arr
+            raw_array[b] = arr
             
-        np.save(cache_file_path, full_array)
+        np.save(cache_file_path, raw_array)
     
-    return full_array
+    return raw_array
+    
+def load_txt_intensity_array(file_path):
+    #directory = 'E:\\16-07-21_Temp\\15-07-2021 testing\\deparafinized-large-area'
+    #file_format = 'mb_x-1V,y-1.1Vstep0.005_'
+    
+    directory = file_path.parents[0]
+    file_name = file_path.stem # Filename without the extension.
+
+    match = re.match(r'^(.*)[b]\d+$', str(file_name)) # It's just a name ending in a b + a number.
+    if match != None:
+        file_format = match.group(1) # E.g. "mb_x-1V,y-1.1Vstep0.005_"
+        
+        raw_array = read_txt_array_scan(directory, file_format)
+        
+        print_memory_usage()
+
+        # Build the Intensity array.
+        print('Building Intensity Array')
+        intensity_array = build_intensity_array(raw_array)
+
+        # Could cache the intensity matrix.
+        #np.save(directory + file_format.format('') + '.intensity.npy', intensity_array)
+        
+        return intensity_array
+    else:
+        raise Exception('Unexpected txt file format')
 
 def build_intensity_array(raw_array):
     
     # Resultant array is cut in half (in third dimension) and rotated.
-    intensity_array = np.empty((full_array.shape[0], int(full_array.shape[2] / 2), full_array.shape[1]))
+    intensity_array = np.empty((raw_array.shape[0], int(raw_array.shape[2] / 2), raw_array.shape[1]))
 
-    for i in range(0, full_array.shape[0]):
-        b_scan = full_array[i]
+    for i in range(0, raw_array.shape[0]):
+        b_scan = raw_array[i]
         
         # Absolute(Fourier Transform( B Scan ) ) 
         arr = np.fft.fft(b_scan)

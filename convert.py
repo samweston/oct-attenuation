@@ -48,32 +48,12 @@ if not file_path.exists():
 if not file_path.is_file():
     raise Exception("Input file path is not a file")
 if file_path.suffix.lower() == '.txt':
-    #directory = 'E:\\16-07-21_Temp\\15-07-2021 testing\\deparafinized-large-area'
-    #file_format = 'mb_x-1V,y-1.1Vstep0.005_'
+    intensity_array = library.load_txt_intensity_array(file_path)
     
-    directory = file_path.parents[0]
-    file_name = file_path.stem # Filename without the extension.
-
-    match = re.match(r'^(.*)[b]\d+$', str(file_name)) # It's just a name ending in a b + a number.
-    if match != None:
-        file_format = match.group(1) # E.g. "mb_x-1V,y-1.1Vstep0.005_"
-        
-        full_array = read_txt_array_scan(directory, file_format)
-        
-        print_memory_usage()
-
-        # Build the Intensity array.
-        print('Building Intensity Array')
-        intensity_array = build_intensity_array(full_array)
-        
-        # The txt file machine seems to generate a bunch of noise (high levels of intensity)
-        # at the top of the sample. Should strip this. Probably just run down.
-        intensity_array = remove_top_noise(intensity_array)
-
-        # Could cache the intensity matrix.
-        #np.save(directory + file_format.format('') + '.intensity.npy', intensity_array)
-    else:
-        raise Exception('Unexpected txt file format')
+    # The txt file machine seems to generate a bunch of noise (high levels of intensity)
+    # at the top of the sample. Should strip this. Probably just run down.
+    intensity_array = library.remove_top_noise(intensity_array)
+    
 elif file_path.suffix.lower() == '.npy':
     # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
     
@@ -101,7 +81,7 @@ print('Intensity mean dimensions: ' + str(intensity_mean_array.shape))
 
 if roll_surface:
     threshold = np.mean(intensity_array)
-    print('Using threshold:', threshold)
+    print('Using surface threshold:', threshold)
     library.surface_roll(intensity_mean_array, threshold)
     library.surface_roll(intensity_array, threshold)
     #library.surface_roll(intensity_mean_array_2, threshold)
