@@ -37,43 +37,53 @@ output_directory = "C:\\Users\\swes043\\Honours\\OCT_Data\\test_output"
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("path", type=pathlib.Path)
+parser.add_argument("path", type=pathlib.Path, action='append', nargs='+')
 parser.add_argument("--output_directory", type=pathlib.Path)
 
 arguments = parser.parse_args()
 
-file_path = arguments.path
 if arguments.output_directory is not None:
     output_directory = arguments.output_directory
 
-if not file_path.exists():
-    raise Exception("Input file does not exist")
-if not file_path.is_file():
-    raise Exception("Input file path is not a file")
-if file_path.suffix.lower() == '.txt':
-    intensity_array = library.load_txt_intensity_array(file_path)
+intensity_array = None
+
+for file_path in arguments.path[0]:
+    print('Attempting to read: ', file_path)
     
-    # The txt file machine seems to generate a bunch of noise (high levels of intensity)
-    # at the top of the sample. Should strip this. Probably just run down.
-    intensity_array = library.remove_top_noise(intensity_array)
-    
-elif file_path.suffix.lower() == '.npy':
-    # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
-    
-    intensity_array = np.load(file_path)
-    
-elif file_path.suffix.lower() == '.tdms':
-    
-    a_scan_num = 714
-    b_scan_num = 250
-    
-    # Expecting Ch1 (?)
-    raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
-    
-    intensity_array = library.build_intensity_array(raw_array)
-    
-else:
-    raise Exception('Unexpected input file path')
+    if not file_path.exists():
+        raise Exception("Input file does not exist")
+    if not file_path.is_file():
+        raise Exception("Input file path is not a file")
+    if file_path.suffix.lower() == '.txt':
+        temp_intensity_array = library.load_txt_intensity_array(file_path)
+        
+        # The txt file machine seems to generate a bunch of noise (high levels of intensity)
+        # at the top of the sample. Should strip this. Probably just run down.
+        temp_intensity_array = library.remove_top_noise(temp_intensity_array)
+        
+    elif file_path.suffix.lower() == '.npy':
+        # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
+        
+        temp_intensity_array = np.load(file_path)
+        
+    elif file_path.suffix.lower() == '.tdms':
+        
+        a_scan_num = 714
+        b_scan_num = 250
+        
+        # Expecting Ch1 (?)
+        raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
+        
+        temp_intensity_array = library.build_intensity_array(raw_array)
+        
+    else:
+        raise Exception('Unexpected input file path')
+        
+    if intensity_array is None:
+        intensity_array = temp_intensity_array
+    else:
+        # Should join in the third dimension. Will fail if the two don't have the same length in the other two dimensions.
+        intensity_array = np.concatenate((intensity_array, temp_intensity_array), axis = 0)
 
 
 #intensity_array[intensity_array < minimum_intensity] = 0
