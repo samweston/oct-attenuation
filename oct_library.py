@@ -136,16 +136,21 @@ def load_txt_intensity_array(file_path):
     if match != None:
         file_format = match.group(1) # E.g. "mb_x-1V,y-1.1Vstep0.005_"
         
-        raw_array = read_txt_array_scan(directory, file_format)
+        intensity_cache_file_path = pathlib.Path.joinpath(directory, file_format.format('') + '.intensity.cache.npy')
+        if intensity_cache_file_path.is_file():
+            # Just read the intensity cache file if it is there.
+            print('Reading intensity cache file', intensity_cache_file_path)
+            intensity_array = np.load(intensity_cache_file_path)
+        else:
+            # Have to read the txt files if no intensity cache file.
+            raw_array = read_txt_array_scan(directory, file_format)
         
-        print_memory_usage()
-
-        # Build the Intensity array.
-        print('Building Intensity Array')
-        intensity_array = build_intensity_array(raw_array)
-
-        # Could cache the intensity matrix.
-        #np.save(directory + file_format.format('') + '.intensity.npy', intensity_array)
+            print_memory_usage()          
+        
+            # Build the Intensity array.
+            print('Building Intensity Array')
+            intensity_array = build_intensity_array(raw_array)
+            np.save(intensity_cache_file_path, intensity_array)
         
         return intensity_array
     else:
