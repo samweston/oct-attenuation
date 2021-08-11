@@ -21,7 +21,13 @@ import attenuation_viewer
 import reference_code.tdmsCode as pytdms
 
 
-        
+def file_paths_display_string(file_paths):
+    prefix = os.path.commonprefix(file_paths)
+    
+    return prefix + ' [' + ','.join([ str(file_path)[len(prefix) : ] for file_path in file_paths ]) + ']'
+    
+    
+
 #print_memory_usage()
 
 DEBUG = True
@@ -47,7 +53,9 @@ if arguments.output_directory is not None:
 
 intensity_array = None
 
-for file_path in arguments.path[0]:
+file_paths = arguments.path[0]
+
+for file_path in file_paths:
     print('Attempting to read: ', file_path)
     
     if not file_path.exists():
@@ -82,7 +90,7 @@ for file_path in arguments.path[0]:
     if intensity_array is None:
         intensity_array = temp_intensity_array
     else:
-        # Should join in the third dimension. Will fail if the two don't have the same length in the other two dimensions.
+        # Should join in the first dimension. Will fail if the two don't have the same length in the other two dimensions.
         intensity_array = np.concatenate((intensity_array, temp_intensity_array), axis = 0)
 
 
@@ -131,7 +139,7 @@ print('Building projection array')
 projection_array = library.build_heatmap_max_projection_array(heatmap_array)
 #print(projection_array.shape)
 
-title = 'Path: ' + str(file_path) + '\n'
+title = 'Path: ' + file_paths_display_string(file_paths) + '\n'
 title += 'Heatmap Alg: ' + str(heatmap_algorithm)
 title += ',Intensity Dim: ' + str(intensity_array.shape)
 if voxel_dimensions:
