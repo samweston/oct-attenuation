@@ -31,6 +31,7 @@ import psutil
 import pathlib
 import re
 import math
+from nptdms import TdmsFile
 
 # Library from physics department containing TDMS code.
 import reference_code.tdmsCode as pytdms
@@ -156,6 +157,22 @@ def load_txt_intensity_array(file_path):
     else:
         raise Exception('Unexpected txt file format')
 
+def read_tdms_array(file_path, a_scan_num, b_scan_num):
+    
+    tdms_file = TdmsFile(file_path)
+    
+    # tdms_file.groups() - returns all groups. group = tdms_file['Name']
+    # group.channels() - returns all channels. channel = group['Name']
+    data = tdms_file['Untitled']['Ch1'].data
+    
+    # Taken from tdmsCode.py
+    a_scan_length = int(len(data) / b_scan_num / a_scan_num)
+    
+    data.resize((b_scan_num, a_scan_num, a_scan_length))
+    raw_array = np.array(data)
+    del data
+    return raw_array
+        
 def build_intensity_array(raw_array):
     
     # Resultant array is cut in half (in third dimension) and rotated.

@@ -17,6 +17,9 @@ import oct_library as library
 #import generate_attenuation
 import attenuation_viewer
 
+# Library from physics department containing TDMS code.
+import reference_code.tdmsCode as pytdms
+
 
         
 #print_memory_usage()
@@ -58,6 +61,17 @@ elif file_path.suffix.lower() == '.npy':
     # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
     
     intensity_array = np.load(file_path)
+    
+elif file_path.suffix.lower() == '.tdms':
+    
+    a_scan_num = 714
+    b_scan_num = 250
+    
+    # Expecting Ch1 (?)
+    raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
+    
+    intensity_array = library.build_intensity_array(raw_array)
+    
 else:
     raise Exception('Unexpected input file path')
 
