@@ -63,9 +63,30 @@ def scan_txt_dimensions(directory, file_format):
     arr = read_txt_array_file(format_txt_path(directory, file_format, 0)) # Get the dimensions from the first one.
     return [b, len(arr), len(arr[0])]
     
+
+#raw_array_lock = multiprocessing.Lock()
+#threaded_raw_array = None
+    
+def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, raw_array_lock, b):
+    file_path = format_txt_path(directory, file_format, b)
+    
+    print('reading file: ' + str(b + 1) + '/' + str(dimensions[0]))
+    
+    arr = read_txt_array_file(file_path)
+    
+    raw_array_lock.acquire()
+    try:
+        raw_array[b] = arr
+    finally:
+        raw_array_lock.release()
+    
+
+
 # Expects a directory (e.g. C:\User\swes043\OCT) and 
 # file name format (e.g. "mb_x-1V,y-1.1Vstep0.005_" for files like mb_x-1V,y-1.1Vstep0.005_b0.txt)
 def read_txt_array_scan(directory, file_format):
+    multithreaded = True
+
     cache_file_path = pathlib.Path.joinpath(directory, file_format + 'b.txt.cache.npy')
 
     # Check if cache file exists
@@ -81,15 +102,24 @@ def read_txt_array_scan(directory, file_format):
 
         raw_array = np.empty(dimensions)
 
-        for b in range(0, dimensions[0]):
-            # Can potentially multi-thread this. Should be faster.
-            file_path = format_txt_path(directory, file_format, b)
-
-            print('reading file: ' + str(b + 1) + '/' + str(dimensions[0]))
+        if multithreaded:        
+            import multiprocessing
+            import multiprocessing.pool
             
-            arr = read_txt_array_file(file_path)
-                
-            raw_array[b] = arr
+            raw_array_lock = multiprocessing.Lock()
+            
+            pool = multiprocessing.pool.ThreadPool(50)
+            for b in range(0, dimensions[0]):
+                pool.apply_async(read_txt_array_scan_single, (directory, file_format, dimensions, raw_array, raw_array_lock, b,))
+            pool.close()
+            pool.join()
+        else:
+            for b in range(0, dimensions[0]):
+                read_txt_array_scan_single(directory, file_format, dimensions, raw_array, raw_array_lock, b)
+        
+        #thread_pool = multiprocessing.Pool(processes = 20)
+        #result = thread_pool.starmap(read_txt_array_scan_single, 
+        #    [ (directory, file_format, dimensions, raw_array, raw_array_lock, b) for b in range(0, dimensions[0]) ])
             
         np.save(cache_file_path, raw_array)
     
