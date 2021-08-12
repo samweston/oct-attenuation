@@ -32,6 +32,7 @@ import pathlib
 import re
 import math
 from nptdms import TdmsFile
+import scipy.stats
 
 # Library from physics department containing TDMS code.
 import reference_code.tdmsCode as pytdms
@@ -237,6 +238,12 @@ def build_intensity_mean_array_2(intensity_array, voxel_dimensions):
                     
     return voxel_array
     
+def linear_regress_slope(a, b):
+    # TODO: seem to get an error (RuntimeWarning: invalid value encountered in double_scalars)
+    # TODO: seem to get an error (RuntimeWarning: invalid value encountered in multiply)
+    # Probably just related to zero values.
+    with np.errstate(all = 'ignore'): 
+        return ((a * b).mean() - (a.mean() * b.mean())) / ((a ** 2).mean() - (a.mean() ** 2))
     
 def build_attenuation_map(intensity_array, voxel_dimensions):
     # Input should already have the surface rolled.
@@ -268,13 +275,24 @@ def build_attenuation_map(intensity_array, voxel_dimensions):
                         offset_1 + m,
                         offset_2 : offset_2 + voxel_dimensions[2]]))
                     
-                with np.errstate(divide = 'ignore'): # Ignore divide by zeros here.
+                # Ignore divide by zeros here. (RuntimeWarning: divide by zero encountered in log)
+                with np.errstate(divide = 'ignore'): 
                     log_vals = np.log(mean_array)
                 
                 # Find the slope of these log(means) and this is the attenuation in this voxel.
+                # This does a least squares fit I believe. Actually this is linear regression,
+                # the numpy.polynomial does a least squares fit (?) not sure really tbh.
                 # TODO: Change to numpy.polynomial
-                fit = np.polyfit(depth_range, log_vals, 1)
-                slope = fit[0]
+                #fit = np.polyfit(depth_range, log_vals, 1)
+                #slope = fit[0]
+                
+                # Thought this might be faster, actually slower
+                #linregress_result = scipy.stats.linregress(depth_range, log_vals)
+                #slope = linregress_result.slope
+                
+                # Use the direct linear regression vector calculation to find the slope. 
+                # Faster, but not massively so.
+                slope = linear_regress_slope(depth_range, log_vals)
                 
                 voxel_array[i, j, k] = slope
                 

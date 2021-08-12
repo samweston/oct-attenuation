@@ -1,8 +1,8 @@
 
 # Input, Either 
 # A TXT file, representing one of the B scans TXT files. OR, 
-# An NPY file, representing the intensity matrix.
-# TODO, allow to read TDMS file directly
+# An NPY file, representing the intensity matrix. OR,
+# A TDMS file, from labview. Reads raw 'Ch1' intensity data.
 
 import os
 import numpy as np
@@ -11,6 +11,7 @@ import argparse
 import pathlib
 import re
 import math
+from time import perf_counter
 
 import oct_library as library
 #import generate_heat_map
@@ -24,6 +25,7 @@ import reference_code.tdmsCode as pytdms
 def file_paths_display_string(file_paths):
     prefix = os.path.commonprefix(file_paths)
     
+    # TODO: Bug here if all paths are equal (displays [] at the end)
     return prefix + ' [' + ','.join([ str(file_path)[len(prefix) : ] for file_path in file_paths ]) + ']'
     
     
@@ -93,7 +95,8 @@ for file_path in file_paths:
         # Should join in the first dimension. Will fail if the two don't have the same length in the other two dimensions.
         intensity_array = np.concatenate((intensity_array, temp_intensity_array), axis = 0)
 
-
+# TODO: Should maybe cache here, especially if there were multiple input files.
+        
 #intensity_array[intensity_array < minimum_intensity] = 0
 intensity_array[intensity_array > maximum_intensity] = maximum_intensity # Clamp to maximum
     
@@ -104,9 +107,9 @@ intensity_array[intensity_array > maximum_intensity] = maximum_intensity # Clamp
 print("Intensity dimensions = " + str(intensity_array.shape))
 #print(intensity_array)
 
+print('Building mean array')
 intensity_mean_array = library.build_intensity_mean_array(intensity_array)
-#print('Building mean map')
-#intensity_mean_array_2 = build_intensity_mean_array_2(intensity_array, (10, 10, 10))
+#intensity_mean_array_2 = library.build_intensity_mean_array_2(intensity_array, (5, 5, 5))
 
 print('Intensity mean dimensions: ' + str(intensity_mean_array.shape))
 #print('Intensity mean 2 dimensions: ', intensity_mean_array_2.shape)
@@ -127,13 +130,16 @@ if apply_power_law_transform:
     
 voxel_dimensions = None
 print('Building attenuation map')
+time_start = perf_counter()
 if heatmap_algorithm == 1:
     heatmap_array = library.build_heatmap_array(intensity_array)
-    print('Heatmap dimensions: ' + str(heatmap_array.shape))
 else: # 2
     voxel_dimensions = (10, 20, 10)
     heatmap_array = library.build_attenuation_map(intensity_array, voxel_dimensions)
-    print('Attenuation map dimensions: ' + str(heatmap_array.shape))
+    
+time_stop = perf_counter()
+print('Attenuation map dimensions: ' + str(heatmap_array.shape))
+print('Attenuation map elapsed:', time_stop - time_start)
 
 print('Building projection array')
 projection_array = library.build_heatmap_max_projection_array(heatmap_array)
@@ -148,25 +154,4 @@ if voxel_dimensions:
 
 attenuation_viewer.view_attenuation(title, intensity_array, heatmap_array, projection_array)
 
-#print("Generating attenuation")
-#generate_attenuation.generate_attenuation(intensity_array, intensity_array, output_directory)
 
-#print("Generating heatmap")
-#generate_heat_map.generate_heat_map(intensity_array, intensity_array, output_directory)
-
-        
-
-
-
-
-
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
