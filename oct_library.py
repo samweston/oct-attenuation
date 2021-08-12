@@ -76,6 +76,7 @@ def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, ra
     
     arr = read_txt_array_file(file_path)
     
+    # Not sure if the lock is necessary, setting value may be thread-safe.
     raw_array_lock.acquire()
     try:
         raw_array[b] = arr
@@ -167,7 +168,7 @@ def read_tdms_array(file_path, a_scan_num, b_scan_num):
     # group.channels() - returns all channels. channel = group['Name']
     data = tdms_file['Untitled']['Ch1'].data
     
-    # Taken from tdmsCode.py
+    # Taken from tdmsCode.py. I guess you could check if this is divisible, but w/e.
     a_scan_length = int(len(data) / b_scan_num / a_scan_num)
     
     data.resize((b_scan_num, a_scan_num, a_scan_length))
@@ -242,7 +243,7 @@ def linear_regress_slope(a, b):
     # TODO: seem to get an error (RuntimeWarning: invalid value encountered in double_scalars)
     # TODO: seem to get an error (RuntimeWarning: invalid value encountered in multiply)
     # Probably just related to zero values.
-    with np.errstate(all = 'ignore'): 
+    with np.errstate(invalid = 'ignore'): 
         return ((a * b).mean() - (a.mean() * b.mean())) / ((a ** 2).mean() - (a.mean() ** 2))
     
 def build_attenuation_map(intensity_array, voxel_dimensions):
@@ -251,6 +252,7 @@ def build_attenuation_map(intensity_array, voxel_dimensions):
     # Down each A scan (?? length) we need to calculate the slope of the log of the intensities.
     #    Then within each voxel, take the average of these slopes.
     # Dimension 3, should be down the A scan
+    
     
     shape = intensity_array.shape
     voxel_dimensions = np.array(voxel_dimensions)
@@ -350,27 +352,49 @@ def build_projection_array(intensity_array):
 
 # Remove the noise at the top of the intensity array.
 def remove_top_noise(intensity_array):
-    # Best method I think would be to find the depth that contains values > mean. And strip these.
+    # Another method I think would be to find the depth that contains values > mean. And strip these.
+    # Would mean we aren't stripping stuff if there isn't any noise at the top.
     return intensity_array[:, 20:, :]
     
 # Surface detection, Rolls stuff at the top to the bottom.
 # In place, will replace intensity_array values.
 def surface_roll(intensity_array, threshold):
-    z = 0
-    for x in intensity_array:
+    for b_scan in intensity_array:
         # This function defines surface as the point where "length" number of values (starting at index 0)
         #     have exceeded the threshold.
         # Strange really, would prefer something else (surface is the first dark/high intensity area, 
         # could do something with that).
-        surface = np.array(pytdms.surface_detect(x, threshold = threshold, length = 5, skip = 5))
+        surface = np.array(pytdms.surface_detect(b_scan, threshold = threshold, length = 5, skip = 5))
 
         for y in range(len(surface)):
-            x[0:surface[y], y] = 0
-            x[:, y] = np.roll(x[:, y], -1 * surface[y])
+            b_scan[0 : surface[y], y] = 0 # set the stuff above the surface as zero.
+            b_scan[:, y] = np.roll(b_scan[:, y], -1 * surface[y])
 
-        z += 1
+def find_surface(intensity_array, threshold):
+    shape = intensity_array.shape
+    surface_positions = np.empty((shape[0], shape[2]), dtype = np.int32)
+    
+    for i, b_scan in enumerate(intensity_array):
+        surface = np.array(pytdms.surface_detect(b_scan, threshold = threshold, length = 5, skip = 5), dtype = np.int32)
         
-# Find surface and depth. Depth will be useful when generating attenuation heatmap.
+        surface_positions[i] = surface
+        
+    return surface_positions
+    
+def build_rolled_intensity_array(intensity_array, surface_positions):
+    rolled_intensity_array = np.empty(intensity_array.shape)
+    
+    for i, b_scan in enumerate(intensity_array):
+        surface = surface_positions[i]
+        
+        for y in range(len(surface)):
+            depth = len(b_scan) - surface[y]
+            rolled_intensity_array[i, 0 : depth, y] = b_scan[surface[y] : , y]
+            
+    return rolled_intensity_array
+
+# Find surface and depth. Depth will be useful when generating attenuation heatmap. 
+# Depth is just a_scan_length - surface[a_scan_num]
 def find_surface_and_depth(intensity_array, threshold):
 
     # Ideally would like to use the neighbouring A scans to improve accuracy of surface.
@@ -378,6 +402,13 @@ def find_surface_and_depth(intensity_array, threshold):
     # Really, The surface is the area where the intensity increases rapidly.
     # Could use linear regression (?). Maybe is also what we should be using in the voxel 
     # attenuation calculation, may be a lot faster than that polynomial calculation
+    pass
+    
+def detect_glass(intensity_array):
+    # Ideally would work out a method for detecting glass. Seems to be the area with multiple,
+    # very flat areas. These show sharp changes in intensity.
+    # How would I do this? Trace down, if there is an area which matches this description,
+    # then expand out while there is a similar pattern.
     pass
         
 def power_law_transform(intensity_array):

@@ -34,6 +34,7 @@ def file_paths_display_string(file_paths):
 
 DEBUG = True
 roll_surface = True
+view_mean_array = False
 apply_power_law_transform = False
 heatmap_algorithm = 2 # 1 = Abi version, 2 = My version
 
@@ -107,35 +108,42 @@ intensity_array[intensity_array > maximum_intensity] = maximum_intensity # Clamp
 print("Intensity dimensions = " + str(intensity_array.shape))
 #print(intensity_array)
 
-print('Building mean array')
-intensity_mean_array = library.build_intensity_mean_array(intensity_array)
-#intensity_mean_array_2 = library.build_intensity_mean_array_2(intensity_array, (5, 5, 5))
+if view_mean_array:
+    print('Building mean array')
+    intensity_mean_array = library.build_intensity_mean_array(intensity_array)
+    #intensity_mean_array_2 = library.build_intensity_mean_array_2(intensity_array, (5, 5, 5))
 
-print('Intensity mean dimensions: ' + str(intensity_mean_array.shape))
-#print('Intensity mean 2 dimensions: ', intensity_mean_array_2.shape)
+    print('Intensity mean dimensions: ' + str(intensity_mean_array.shape))
+    #print('Intensity mean 2 dimensions: ', intensity_mean_array_2.shape)
 
 if roll_surface:
     threshold = np.mean(intensity_array)
     print('Using surface threshold:', threshold)
-    library.surface_roll(intensity_mean_array, threshold)
-    library.surface_roll(intensity_array, threshold)
-    #library.surface_roll(intensity_mean_array_2, threshold)
+    surface_positions = library.find_surface(intensity_array, threshold)
+    # Don't really like having two intensity_arrays sitting in memory, but w/e.
+    rolled_intensity_array = library.build_rolled_intensity_array(intensity_array, surface_positions)
+    
+    #library.surface_roll(intensity_array, threshold)
+    
+    if view_mean_array:
+        library.surface_roll(intensity_mean_array, threshold)
+        #library.surface_roll(intensity_mean_array_2, threshold)
     
 #if DEBUG:
     # Save the first intensity B scan.
     #np.savetxt(pathlib.Path.joinpath(directory, file_format + 'b0.post.tmp.txt'), intensity_array[0], delimiter = '\t')
     
 if apply_power_law_transform:
-    intensity_array = library.power_law_transform(intensity_array)
+    rolled_intensity_array = library.power_law_transform(rolled_intensity_array)
     
 voxel_dimensions = None
 print('Building attenuation map')
 time_start = perf_counter()
 if heatmap_algorithm == 1:
-    heatmap_array = library.build_heatmap_array(intensity_array)
+    heatmap_array = library.build_heatmap_array(rolled_intensity_array)
 else: # 2
     voxel_dimensions = (10, 20, 10)
-    heatmap_array = library.build_attenuation_map(intensity_array, voxel_dimensions)
+    heatmap_array = library.build_attenuation_map(rolled_intensity_array, voxel_dimensions)
     
 time_stop = perf_counter()
 print('Attenuation map dimensions: ' + str(heatmap_array.shape))
@@ -151,7 +159,9 @@ title += ',Intensity Dim: ' + str(intensity_array.shape)
 if voxel_dimensions:
     title += ',Voxel Dim: ' + str(voxel_dimensions)
 
+if view_mean_array:
+    view_intensity_array = intensity_mean_array
+else:
+    view_intensity_array = intensity_array
 
-attenuation_viewer.view_attenuation(title, intensity_array, heatmap_array, projection_array)
-
-
+attenuation_viewer.view_attenuation(title, view_intensity_array, heatmap_array, projection_array, surface_positions)
