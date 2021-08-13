@@ -246,7 +246,7 @@ def linear_regress_slope(a, b):
     with np.errstate(invalid = 'ignore'): 
         return ((a * b).mean() - (a.mean() * b.mean())) / ((a ** 2).mean() - (a.mean() ** 2))
     
-def build_attenuation_map(intensity_array, voxel_dimensions):
+def build_attenuation_map(rolled_intensity_array, voxel_dimensions):
     # Input should already have the surface rolled.
     # Input should include the dimensions of the voxels.
     # Down each A scan (?? length) we need to calculate the slope of the log of the intensities.
@@ -254,7 +254,7 @@ def build_attenuation_map(intensity_array, voxel_dimensions):
     # Dimension 3, should be down the A scan
     
     
-    shape = intensity_array.shape
+    shape = rolled_intensity_array.shape
     voxel_dimensions = np.array(voxel_dimensions)
     
     voxel_array = np.empty(shape // voxel_dimensions)
@@ -272,7 +272,7 @@ def build_attenuation_map(intensity_array, voxel_dimensions):
                 # Depth is within the second dimension (dim[1])
                 mean_array = []
                 for m in range(0, voxel_dimensions[1]):
-                    mean_array.append(np.mean(intensity_array[
+                    mean_array.append(np.mean(rolled_intensity_array[
                         offset_0 : offset_0 + voxel_dimensions[0],
                         offset_1 + m,
                         offset_2 : offset_2 + voxel_dimensions[2]]))
@@ -354,6 +354,7 @@ def build_projection_array(intensity_array):
 def remove_top_noise(intensity_array):
     # Another method I think would be to find the depth that contains values > mean. And strip these.
     # Would mean we aren't stripping stuff if there isn't any noise at the top.
+    # Should also just apply this to every scan once I've done that.
     return intensity_array[:, 20:, :]
     
 # Surface detection, Rolls stuff at the top to the bottom.
