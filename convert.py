@@ -85,7 +85,7 @@ for file_path in file_paths:
         # Expecting Ch1 (?)
         raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
         
-        temp_intensity_array = library.build_intensity_array(raw_array)
+        temp_intensity_array = library.build_intensity_array(raw_array, True)
         
     else:
         raise Exception('Unexpected input file path')

@@ -152,7 +152,7 @@ def load_txt_intensity_array(file_path):
         
             # Build the Intensity array.
             print('Building Intensity Array')
-            intensity_array = build_intensity_array(raw_array)
+            intensity_array = build_intensity_array(raw_array, False)
             np.save(intensity_cache_file_path, intensity_array)
         
         return intensity_array
@@ -176,16 +176,23 @@ def read_tdms_array(file_path, a_scan_num, b_scan_num):
 
     return raw_array
         
-def build_intensity_array(raw_array):
+def build_intensity_array(raw_array, apply_hanning_window):
     
     # Resultant array is cut in half (in third dimension) and rotated.
     intensity_array = np.empty((raw_array.shape[0], int(raw_array.shape[2] / 2), raw_array.shape[1]))
 
     for i in range(0, raw_array.shape[0]):
         b_scan = raw_array[i]
+        arr = b_scan
+        
+        # Hanning window. Per email: "just a multiplication of the window to the spectra"
+        # May not be necessary on the 800 nm system (?)
+        if apply_hanning_window:
+            for j in range(len(b_scan)):
+                arr[j] = np.hanning(len(arr[j])) * arr[j]
         
         # Absolute(Fourier Transform( B Scan ) ) 
-        arr = np.fft.fft(b_scan)
+        arr = np.fft.fft(arr)
         arr = np.absolute(arr)
         
         # Log10 (?). Would need to adjust the colour map when visualising
