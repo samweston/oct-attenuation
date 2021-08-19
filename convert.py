@@ -35,6 +35,7 @@ def file_paths_display_string(file_paths):
 DEBUG = True
 roll_surface = True
 view_mean_array = False
+view_rolled_intensity = True
 apply_power_law_transform = False
 heatmap_algorithm = 2 # 1 = Abi version, 2 = My version
 
@@ -162,6 +163,10 @@ if voxel_dimensions:
 if view_mean_array:
     view_intensity_array = intensity_mean_array
 else:
-    view_intensity_array = intensity_array
+    if view_rolled_intensity:
+        view_intensity_array = rolled_intensity_array
+    else:
+        view_intensity_array = intensity_array
+    
 
 attenuation_viewer.view_attenuation(title, view_intensity_array, heatmap_array, projection_array, surface_positions)

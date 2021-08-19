@@ -183,28 +183,29 @@ def build_intensity_array(raw_array, apply_hanning_window):
 
     for i in range(0, raw_array.shape[0]):
         b_scan = raw_array[i]
-        arr = b_scan
         
         # Hanning window. Per email: "just a multiplication of the window to the spectra"
         # May not be necessary on the 800 nm system (?)
         if apply_hanning_window:
             for j in range(len(b_scan)):
-                arr[j] = np.hanning(len(arr[j])) * arr[j]
+                b_scan[j] = np.hanning(len(b_scan[j])) * b_scan[j]
         
         # Absolute(Fourier Transform( B Scan ) ) 
-        arr = np.fft.fft(arr)
-        arr = np.absolute(arr)
+        b_scan = np.fft.fft(b_scan)
+        b_scan = np.absolute(b_scan)
         
         # Log10 (?). Would need to adjust the colour map when visualising
-        #arr = np.log10(arr) # np.log(arr);
+        #b_scan = np.log10(b_scan) # np.log(b_scan);
         
         #rot = np.rot90(np.sqrt(abs_ch0 ** 2 + abs_ch1 ** 2)[:, 0:int(A_length / 2)], 3) # Including Retardation.
         
-        arr = np.rot90(arr[:, 0:int(len(arr[0]) / 2)], k = 3) # Only need half of the resultant array. Rotated by 270 degrees (k=3(?)).
-        # Should really flip the image too (so as it appears in the same orientation as the labview software).
-        arr = np.flip(arr, 1)
+        # Only need half of the resultant array. Also, rotate by 270 degrees (k=3).
+        b_scan = np.rot90(b_scan[:, 0:int(len(b_scan[0]) / 2)], k = 3)
         
-        intensity_array[i] = arr
+        # Should really flip the image too (so as it appears in the same orientation as the labview software).
+        b_scan = np.flip(b_scan, 1)
+        
+        intensity_array[i] = b_scan
         
     return intensity_array
         
@@ -218,6 +219,7 @@ def build_intensity_mean_array(intensity_array):
 
     # Mean of x (and next 4) in first dimension. Size of a voxel?
     # Essentially seems to just create a smaller array (smaller first dimension, compressed). Why though?
+    # Just a fast easy way of averaging in a single B scan.
     for x in range(0, intensity_array.shape[0], vox_c):
         mean = np.mean((intensity_array[x:x + vox_c, :, :]), axis = 0) 
         intensity_mean_array.append(mean)
@@ -225,7 +227,6 @@ def build_intensity_mean_array(intensity_array):
     return np.array(intensity_mean_array)
 
 # Voxel mean array, allows adjustment in all 3 dimensions.
-# TODO: Re-test this
 def build_intensity_mean_array_2(intensity_array, voxel_dimensions):
     shape = intensity_array.shape
     voxel_dimensions = np.array(voxel_dimensions)
@@ -417,6 +418,7 @@ def detect_glass(intensity_array):
     # very flat areas. These show sharp changes in intensity.
     # How would I do this? Trace down, if there is an area which matches this description,
     # then expand out while there is a similar pattern.
+    # The intensity of glass has a sharp rise, then a sharp drop. Could consider this as well.
     pass
         
 def power_law_transform(intensity_array):
