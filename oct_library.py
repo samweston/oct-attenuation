@@ -77,18 +77,21 @@ def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, ra
     arr = read_txt_array_file(file_path)
     
     # Not sure if the lock is necessary, setting value may be thread-safe.
-    raw_array_lock.acquire()
-    try:
+    if raw_array_lock is None:
         raw_array[b] = arr
-    finally:
-        raw_array_lock.release()
+    else:
+        raw_array_lock.acquire()
+        try:
+            raw_array[b] = arr
+        finally:
+            raw_array_lock.release()
     
 
 
 # Expects a directory (e.g. C:\User\swes043\OCT) and 
 # file name format (e.g. "mb_x-1V,y-1.1Vstep0.005_" for files like mb_x-1V,y-1.1Vstep0.005_b0.txt)
 def read_txt_array_scan(directory, file_format):
-    multithreaded = True
+    multithreaded = False # Seems to be CPU bound, so this isn't actually improving things.
 
     cache_file_path = pathlib.Path.joinpath(directory, file_format + 'b.txt.cache.npy')
 
@@ -111,14 +114,14 @@ def read_txt_array_scan(directory, file_format):
             
             raw_array_lock = multiprocessing.Lock()
             
-            pool = multiprocessing.pool.ThreadPool(50)
+            pool = multiprocessing.pool.ThreadPool(10)
             for b in range(0, dimensions[0]):
                 pool.apply_async(read_txt_array_scan_single, (directory, file_format, dimensions, raw_array, raw_array_lock, b,))
             pool.close()
             pool.join()
         else:
             for b in range(0, dimensions[0]):
-                read_txt_array_scan_single(directory, file_format, dimensions, raw_array, raw_array_lock, b)
+                read_txt_array_scan_single(directory, file_format, dimensions, raw_array, None, b)
         
         #thread_pool = multiprocessing.Pool(processes = 20)
         #result = thread_pool.starmap(read_txt_array_scan_single, 
