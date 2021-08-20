@@ -40,7 +40,7 @@ apply_power_law_transform = False
 heatmap_algorithm = 2 # 1 = Abi version, 2 = My version
 
 # Example code set maximum intensity as 20000. Not sure why. math.inf, no threshold.
-maximum_intensity = 20000 # math.inf # 20000
+maximum_intensity = math.inf # 20000
 #minimum_intensity = 1000
 
 output_directory = "C:\\Users\\swes043\\Honours\\OCT_Data\\test_output"
