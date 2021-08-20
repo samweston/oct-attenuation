@@ -24,11 +24,11 @@ import reference_code.tdmsCode as pytdms
 
 def file_paths_display_string(file_paths):
     prefix = os.path.commonprefix(file_paths)
-    
+
     # TODO: Bug here if all paths are equal (displays [] at the end)
     return prefix + ' [' + ','.join([ str(file_path)[len(prefix) : ] for file_path in file_paths ]) + ']'
-    
-    
+
+
 
 #print_memory_usage()
 
@@ -61,36 +61,36 @@ file_paths = arguments.path[0]
 
 for file_path in file_paths:
     print('Attempting to read: ', file_path)
-    
+
     if not file_path.exists():
         raise Exception("Input file does not exist")
     if not file_path.is_file():
         raise Exception("Input file path is not a file")
     if file_path.suffix.lower() == '.txt':
         temp_intensity_array = library.load_txt_intensity_array(file_path)
-        
+
         # The txt file machine seems to generate a bunch of noise (high levels of intensity)
         # at the top of the sample. Should strip this. Probably just run down.
         temp_intensity_array = library.remove_top_noise(temp_intensity_array)
-        
+
     elif file_path.suffix.lower() == '.npy':
         # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
-        
+
         temp_intensity_array = np.load(file_path)
-        
+
     elif file_path.suffix.lower() == '.tdms':
-        
+
         a_scan_num = 714
         b_scan_num = 250
-        
+
         # Expecting Ch1 (?)
         raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
-        
+
         temp_intensity_array = library.build_intensity_array(raw_array, True)
-        
+
     else:
         raise Exception('Unexpected input file path')
-        
+
     if intensity_array is None:
         intensity_array = temp_intensity_array
     else:
@@ -98,14 +98,14 @@ for file_path in file_paths:
         intensity_array = np.concatenate((intensity_array, temp_intensity_array), axis = 0)
 
 # TODO: Should maybe cache here, especially if there were multiple input files.
-        
+
 #intensity_array[intensity_array < minimum_intensity] = 0
 intensity_array[intensity_array > maximum_intensity] = maximum_intensity # Clamp to maximum
-    
+
 #if DEBUG:
     # Save the first intensity B scan.
     #np.savetxt(pathlib.Path.joinpath(directory, file_format + 'b0.pre.tmp.txt'), intensity_array[0], delimiter = '\t')
-    
+
 print("Intensity dimensions = " + str(intensity_array.shape))
 #print(intensity_array)
 
@@ -123,20 +123,20 @@ if roll_surface:
     surface_positions = library.find_surface(intensity_array, threshold)
     # Don't really like having two intensity_arrays sitting in memory, but w/e.
     rolled_intensity_array = library.build_rolled_intensity_array(intensity_array, surface_positions)
-    
+
     #library.surface_roll(intensity_array, threshold)
-    
+
     if view_mean_array:
         library.surface_roll(intensity_mean_array, threshold)
         #library.surface_roll(intensity_mean_array_2, threshold)
-    
+
 #if DEBUG:
     # Save the first intensity B scan.
     #np.savetxt(pathlib.Path.joinpath(directory, file_format + 'b0.post.tmp.txt'), intensity_array[0], delimiter = '\t')
-    
+
 if apply_power_law_transform:
     rolled_intensity_array = library.power_law_transform(rolled_intensity_array)
-    
+
 voxel_dimensions = None
 print('Building attenuation map')
 time_start = perf_counter()
@@ -145,7 +145,7 @@ if heatmap_algorithm == 1:
 else: # 2
     voxel_dimensions = (10, 20, 10)
     heatmap_array = library.build_attenuation_map(rolled_intensity_array, voxel_dimensions)
-    
+
 time_stop = perf_counter()
 print('Attenuation map dimensions: ' + str(heatmap_array.shape))
 print('Attenuation map elapsed:', time_stop - time_start)
@@ -168,6 +168,6 @@ else:
         surface_positions = None
     else:
         view_intensity_array = intensity_array
-    
+
 
 attenuation_viewer.view_attenuation(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions)
