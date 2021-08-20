@@ -35,7 +35,7 @@ def file_paths_display_string(file_paths):
 DEBUG = True
 roll_surface = True
 view_mean_array = False
-view_rolled_intensity = True
+view_rolled_intensity = False
 apply_power_law_transform = False
 heatmap_algorithm = 2 # 1 = Abi version, 2 = My version
 
@@ -165,8 +165,9 @@ if view_mean_array:
 else:
     if view_rolled_intensity:
         view_intensity_array = rolled_intensity_array
+        surface_positions = None
     else:
         view_intensity_array = intensity_array
     
 
-attenuation_viewer.view_attenuation(title, view_intensity_array, heatmap_array, projection_array, surface_positions)
+attenuation_viewer.view_attenuation(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions)

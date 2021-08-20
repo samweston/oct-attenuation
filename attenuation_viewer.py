@@ -5,7 +5,7 @@ import scipy.signal as sig
 
 
 class AttenuationViewer:
-    def __init__(self, title, intensity_array, heatmap_array, projection_array, surface_positions):
+    def __init__(self, title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions):
         fig, ax = plt.subplots(2, 2, figsize = (12,6)) # Returns figure and an array of axis
         self.fig = fig
         self.ax = ax
@@ -13,7 +13,8 @@ class AttenuationViewer:
         self.intensity_axis = self.ax[1][0]
         self.projection_axis = self.ax[0][0]
         
-        self.intensity_array = intensity_array
+        self.view_intensity_array = view_intensity_array
+        self.rolled_intensity_array = rolled_intensity_array
         self.heatmap_array = heatmap_array
         self.projection_array = projection_array
         self.surface_positions = surface_positions
@@ -21,7 +22,7 @@ class AttenuationViewer:
         scroll_cid = fig.canvas.mpl_connect('scroll_event', self.on_scroll)
         click_cid = fig.canvas.mpl_connect('button_press_event', self.on_click)
         
-        self.scan_num = len(intensity_array) // 2 # B scan number, start in the middle
+        self.scan_num = len(view_intensity_array) // 2 # B scan number, start in the middle
         self.a_scan_num = 0 # Index along B scan (a scan number)
         
         self.title = title
@@ -57,12 +58,12 @@ class AttenuationViewer:
             
         # Draw the line showing  the position of the visible b scan.
         # [x1, x2, ...], [y1, y2, ...]
-        index = int((self.scan_num / len(self.intensity_array)) * self.projection_array.shape[0])
+        index = int((self.scan_num / len(self.view_intensity_array)) * self.projection_array.shape[0])
         xlim = axis.get_xlim()
         axis.plot([xlim[0], xlim[1]], [index, index], 'b-')
             
     def update_intensity(self):
-        b_scan = self.intensity_array[self.scan_num]
+        b_scan = self.view_intensity_array[self.scan_num]
         intensity_axis = self.intensity_axis
         
         intensity_axis.clear()
@@ -74,13 +75,14 @@ class AttenuationViewer:
         im_intensity = intensity_axis.imshow(b_scan, cmap = 'binary', interpolation = 'none', aspect = 'auto', 
             vmin = 0, vmax = 20000) #, extent=[0, b_length, depth, 0])
             
-        intensity_axis.set_title('Scan ({}/{})'.format(self.scan_num, len(self.intensity_array) - 1))
+        intensity_axis.set_title('Scan ({}/{})'.format(self.scan_num, len(self.view_intensity_array) - 1))
         intensity_axis.set_xlabel('B-scan length (??)') # (?)
         intensity_axis.set_ylabel('A-scan length (??)') # (?)
         
         # Draw the surface
-        b_scan_surface_positions = self.surface_positions[self.scan_num]
-        intensity_axis.plot(range(0, len(b_scan_surface_positions)), b_scan_surface_positions, '-', color='orange')
+        if self.surface_positions is not None:
+            b_scan_surface_positions = self.surface_positions[self.scan_num]
+            intensity_axis.plot(range(0, len(b_scan_surface_positions)), b_scan_surface_positions, '-', color='orange')
         
         # Draw the line showing  the position of the a scan attenuation graph.
         ylim = intensity_axis.get_ylim()
@@ -88,7 +90,7 @@ class AttenuationViewer:
         
         
     def update_heatmap(self):
-        heatmap_index = int(self.scan_num * (len(self.heatmap_array) / len(self.intensity_array)))
+        heatmap_index = int(self.scan_num * (len(self.heatmap_array) / len(self.view_intensity_array)))
         a_scan_heatmap = self.heatmap_array[heatmap_index]
         a_scan_heatmap_axis = self.ax[0][1]
         
@@ -98,14 +100,14 @@ class AttenuationViewer:
             vmax = 0, vmin= -0.06) # , extent=[0,b_length,depth,0])
         if self.cbar_atten == None:
             self.cbar_atten = self.fig.colorbar(im_attenuation, ax = a_scan_heatmap_axis) #### make the colorbar
-            self.cbar_atten.set_label('Attenuation coefficient', rotation=270)
+            self.cbar_atten.set_label('Attenuation coefficient', rotation = 270)
             
         a_scan_heatmap_axis.set_title('Attenuation-Heatmap ({}/{})'.format(heatmap_index, len(self.heatmap_array) - 1))
         a_scan_heatmap_axis.set_xlabel('B-scan Length (??)')
         a_scan_heatmap_axis.set_ylabel('Depth (??)')
         
     def update_a_scan_attenuation(self):
-        a_scan = self.intensity_array[self.scan_num]
+        a_scan = self.rolled_intensity_array[self.scan_num] # Use the rolled array (use surface).
         
         atten_graph_axis = self.ax[1][1]
         
@@ -133,7 +135,7 @@ class AttenuationViewer:
         plt.show()
     
     def set_scan_num(self, adjustment):
-        self.scan_num = min(len(self.intensity_array) - 1, max(0, self.scan_num + adjustment)) # Clamp
+        self.scan_num = min(len(self.view_intensity_array) - 1, max(0, self.scan_num + adjustment)) # Clamp
     
     def on_scroll(self, event):
         # https://matplotlib.org/stable/gallery/event_handling/image_slices_viewer.html
@@ -155,21 +157,19 @@ class AttenuationViewer:
             self.update()
         if self.projection_axis.in_axes(event):
             ax_position = self.projection_axis.transData.inverted().transform((event.x, event.y))
-            self.scan_num = int((ax_position[1] / self.projection_array.shape[0]) * len(self.intensity_array))
+            self.scan_num = int((ax_position[1] / self.projection_array.shape[0]) * len(self.view_intensity_array))
             self.update()
 
 
-def view_attenuation(title, _intensity_array, _heatmap_array, _projection_array, surface_positions):
-    intensity_array = _intensity_array
-    
-    heatmap_array = _heatmap_array
-    
-    projection_array = _projection_array
+def view_attenuation(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions):
 
     #b_length = 600 * 0.02 # ????
     #depth = 500 * 0.01 / 1.4 # ????
     
-    print('There are {} B-scans'.format(intensity_array.shape[0]))
+    if view_intensity_array.shape != rolled_intensity_array.shape:
+        raise "view_intensity_array.shape != rolled_intensity_array.shape"
+    
+    print('There are {} B-scans'.format(view_intensity_array.shape[0]))
     
 #    while True:
 #        a_scan = input("Enter scan to view: ") # A (?), check this.
@@ -182,7 +182,7 @@ def view_attenuation(title, _intensity_array, _heatmap_array, _projection_array,
 #            
 #        view_a_scan(a_scan_num, intensity_array, heatmap_array)
     
-    viewer = AttenuationViewer(title, intensity_array, heatmap_array, projection_array, surface_positions)
+    viewer = AttenuationViewer(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions)
     viewer.show()
     
 
