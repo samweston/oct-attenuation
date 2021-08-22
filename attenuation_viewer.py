@@ -1,7 +1,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.signal as sig
+import scipy.signal
 
 
 class AttenuationViewer:
@@ -115,8 +115,16 @@ class AttenuationViewer:
 
         # Plot the logarithm line.
         with np.errstate(divide = 'ignore'): # Ignore divide by zeros here.
-            yval = np.log(a_scan[:, self.a_scan_num]) # Takes the log of the intensity values running down the A scan.
-        atten_graph_axis.plot(np.arange(0, np.size(yval), 1), yval)
+            y_val = np.log(a_scan[:, self.a_scan_num]) # Takes the log of the intensity values running down the A scan.
+        x_val = np.arange(0, np.size(y_val))
+
+        atten_graph_axis.plot(x_val, y_val)
+
+        # Plot smoothed line using Savitsky Golay filter
+        # Not sure what the best parameters for window size and polynomial
+        #   order should be. 31 and 3 seem to work alright.
+        y_smooth_val = scipy.signal.savgol_filter(y_val, 31, 3)
+        atten_graph_axis.plot(x_val, y_smooth_val)
 
         # Plot a fit line? (Slope(?))
         draw_fit_line = False
