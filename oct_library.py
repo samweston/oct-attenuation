@@ -62,12 +62,10 @@ def scan_txt_dimensions(directory, file_format):
 
         b += 1
 
-    arr = read_txt_array_file(format_txt_path(directory, file_format, 0)) # Get the dimensions from the first one.
+    # Get the dimensions from the first one.
+    arr = read_txt_array_file(format_txt_path(directory, file_format, 0))
+
     return [b, len(arr), len(arr[0])]
-
-
-#raw_array_lock = multiprocessing.Lock()
-#threaded_raw_array = None
 
 def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, raw_array_lock, b):
     file_path = format_txt_path(directory, file_format, b)
@@ -76,7 +74,6 @@ def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, ra
 
     arr = read_txt_array_file(file_path)
 
-    # Not sure if the lock is necessary, setting value may be thread-safe.
     if raw_array_lock is None:
         raw_array[b] = arr
     else:
@@ -85,7 +82,6 @@ def read_txt_array_scan_single(directory, file_format, dimensions, raw_array, ra
             raw_array[b] = arr
         finally:
             raw_array_lock.release()
-
 
 
 # Expects a directory (e.g. C:\User\swes043\OCT) and 
@@ -108,7 +104,7 @@ def read_txt_array_scan(directory, file_format):
 
         raw_array = np.empty(dimensions)
 
-        if multithreaded:        
+        if multithreaded:
             import multiprocessing
             import multiprocessing.pool
 
