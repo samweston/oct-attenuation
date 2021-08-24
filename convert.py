@@ -37,6 +37,8 @@ roll_surface = True
 view_mean_array = False
 view_rolled_intensity = False
 apply_power_law_transform = False
+
+view_intensity_bounds = (0, 20000) # (Min, Max)
 heatmap_algorithm = 3 # 1 = Abi version, 2 = My version, 3 = Smoothed A scans.
 
 # Example code set maximum intensity as 20000. Not sure why. math.inf, no threshold.
@@ -69,9 +71,15 @@ for file_path in file_paths:
     if file_path.suffix.lower() == '.txt':
         temp_intensity_array = library.load_txt_intensity_array(file_path)
 
-        # The txt file machine seems to generate a bunch of noise (high levels of intensity)
-        # at the top of the sample. Should strip this. Probably just run down.
+        # Assuming .txt input is from the 800nm system.
+
+        # The txt file machine seems to generate a bunch of noise (high levels
+        # of intensity) at the top of the sample. Should strip this. Probably
+        # just run down.
         temp_intensity_array = library.remove_top_noise(temp_intensity_array)
+
+        # Bounds should be different for 800nm system.
+        view_intensity_bounds = (0, 10000)
 
     elif file_path.suffix.lower() == '.npy':
         # E.g. "C:\\Users\\swes043\\Honours\\OCT\\1300_SS\\npy files_16th May_1300nm_SS\\grid01_Int.npy"
@@ -80,6 +88,7 @@ for file_path in file_paths:
 
     elif file_path.suffix.lower() == '.tdms':
 
+        # 1300 output is a flat array it seems, so need to know the dimensions.
         a_scan_num = 714
         b_scan_num = 250
 
@@ -179,6 +188,6 @@ else:
         view_intensity_array = intensity_array
 
 attenuation_viewer.view_attenuation(title, view_intensity_array,
-    rolled_intensity_array, heatmap_array, heatmap_bounds, projection_array,
-    surface_positions)
+    view_intensity_bounds, rolled_intensity_array, heatmap_array,
+    heatmap_bounds, projection_array, surface_positions)
 

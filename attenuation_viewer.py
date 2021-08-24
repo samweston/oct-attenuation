@@ -5,8 +5,9 @@ import scipy.signal
 
 
 class AttenuationViewer:
-    def __init__(self, title, view_intensity_array, rolled_intensity_array,
-            heatmap_array, heatmap_bounds, projection_array, surface_positions):
+    def __init__(self, title, view_intensity_array, view_intensity_bounds,
+            rolled_intensity_array, heatmap_array, heatmap_bounds,
+            projection_array, surface_positions):
         fig, ax = plt.subplots(2, 2, figsize = (12,6)) # Returns figure and an array of axis
         self.fig = fig
         self.ax = ax
@@ -15,6 +16,7 @@ class AttenuationViewer:
         self.projection_axis = self.ax[0][0]
 
         self.view_intensity_array = view_intensity_array
+        self.view_intensity_bounds = view_intensity_bounds
         self.rolled_intensity_array = rolled_intensity_array
         self.heatmap_array = heatmap_array
         self.heatmap_bounds = heatmap_bounds
@@ -75,8 +77,11 @@ class AttenuationViewer:
         # This is what Abi used with his power law transform.
 #        im_intensity = intensity_axis.imshow(b_scan, cmap = 'Greys_r', interpolation = 'none', aspect = 'auto', vmin = 0, vmax = 2)
 
-        im_intensity = intensity_axis.imshow(b_scan, cmap = 'binary', interpolation = 'none', aspect = 'auto', 
-            vmin = 0, vmax = 20000) #, extent=[0, b_length, depth, 0])
+        im_intensity = intensity_axis.imshow(b_scan, cmap = 'binary',
+            interpolation = 'none', aspect = 'auto',
+            vmin = self.view_intensity_bounds[0],
+            vmax = self.view_intensity_bounds[1])
+            #, extent=[0, b_length, depth, 0])
 
         intensity_axis.set_title('Scan ({}/{})'.format(self.scan_num, len(self.view_intensity_array) - 1))
         intensity_axis.set_xlabel('B-scan length (??)') # (?)
@@ -175,8 +180,9 @@ class AttenuationViewer:
             self.update()
 
 
-def view_attenuation(title, view_intensity_array, rolled_intensity_array,
-        heatmap_array, heatmap_bounds, projection_array, surface_positions):
+def view_attenuation(title, view_intensity_array, view_intensity_bounds,
+        rolled_intensity_array, heatmap_array, heatmap_bounds,
+        projection_array, surface_positions):
 
     #b_length = 600 * 0.02 # ????
     #depth = 500 * 0.01 / 1.4 # ????
@@ -187,8 +193,8 @@ def view_attenuation(title, view_intensity_array, rolled_intensity_array,
     print('There are {} B-scans'.format(view_intensity_array.shape[0]))
 
     viewer = AttenuationViewer(title, view_intensity_array,
-        rolled_intensity_array, heatmap_array, heatmap_bounds,
-        projection_array, surface_positions)
+        view_intensity_bounds, rolled_intensity_array, heatmap_array,
+        heatmap_bounds, projection_array, surface_positions)
 
     viewer.show()
 
