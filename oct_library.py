@@ -33,6 +33,7 @@ import re
 import math
 from nptdms import TdmsFile
 import scipy.stats
+import tqdm # Progress bar
 
 # Library from physics department containing TDMS code.
 import reference_code.tdmsCode as pytdms
@@ -253,13 +254,36 @@ def linear_regress_slope(a, b):
     with np.errstate(invalid = 'ignore'): 
         return ((a * b).mean() - (a.mean() * b.mean())) / ((a ** 2).mean() - (a.mean() ** 2))
 
-def build_attenuation_map(rolled_intensity_array, voxel_dimensions):
+# Using pytdms code.
+def build_attenuation_map_1(intensity_array):
+    ### define voxel size
+    voxC = 3  # number of B-scans to average
+    voxA = 20 #20# int(40*voxC/10) # size of A-scan 
+    voxB = 20 #20# int(40*voxC/14) # size of B_scan segments
+
+    # This calculates the attenuation for each voxel. Is at least O(n^3), something like O(n^5) actually, I think,
+    #     so can be slow. Maybe could possibly multithread this (?). Very slow actually.
+    # TODO: Need to have a look at this code and check see it works, seemed quite complicated.
+    #     : One would think that it needs to examine the attenuation drop off (the slope)
+    #     : Should really just be peak differential I would think (the steepest point), based
+    #     : on how it has been described to me before.
+    atten_c, mask, _ = pytdms.Heatmap_Int(intensity_array, voxC = voxC, voxB = voxB, voxA = voxA)
+
+    # Not sure what the point in this is.
+    masked_c = ma.array(atten_c, mask = mask)
+    masked_c = ma.compressed(masked_c) # Apparently returns all non-masked data as 1d array. 
+    masked_c[np.isnan(masked_c)] = 0
+
+    return atten_c
+
+# Should essentially be same algorithm as pytdms. More convenient mechanism
+# for adjusting voxel dimensions though
+def build_attenuation_map_2(rolled_intensity_array, voxel_dimensions):
     # Input should already have the surface rolled.
     # Input should include the dimensions of the voxels.
     # Down each A scan (?? length) we need to calculate the slope of the log of the intensities.
     #    Then within each voxel, take the average of these slopes.
     # Dimension 3, should be down the A scan
-
 
     shape = rolled_intensity_array.shape
     voxel_dimensions = np.array(voxel_dimensions)
@@ -268,7 +292,10 @@ def build_attenuation_map(rolled_intensity_array, voxel_dimensions):
 
     depth_range = np.arange(0, voxel_dimensions[1])
 
+    progress_bar = tqdm.tqdm(total = shape[0] // voxel_dimensions[0])
+
     for i in range(0, shape[0] // voxel_dimensions[0]):
+        progress_bar.update(1)
         for j in range(0, shape[1] // voxel_dimensions[1]):
             for k in range(0, shape[2] // voxel_dimensions[2]):
                 offset_0 = i * voxel_dimensions[0]
@@ -305,31 +332,55 @@ def build_attenuation_map(rolled_intensity_array, voxel_dimensions):
 
                 voxel_array[i, j, k] = slope
 
+    progress_bar.close()
     return voxel_array
 
+# Just another method for calculating slopes. Take the log values down each
+# A scan, smooth (using Savitzky Golay filtering), then record the slopes
+# between each point. Actually a lot faster than the other method. I guess
+# it's because we don't have to do the regression stuff.
+# Probably best to set the second dimension to 1 (e.g. (10, 1, 10))
+def build_attenuation_map_3(rolled_intensity_array, voxel_dimensions):
+    shape = rolled_intensity_array.shape
+    voxel_dimensions = np.array(voxel_dimensions)
 
-def build_heatmap_array(intensity_array):
-    ### define voxel size
-    voxC = 3  # number of B-scans to average
-    voxA = 20 #20# int(40*voxC/10) # size of A-scan 
-    voxB = 20 #20# int(40*voxC/14) # size of B_scan segments
+    result_shape = shape // voxel_dimensions
+    result_shape[1] -= 1
+    voxel_array = np.empty(result_shape)
 
-    # This calculates the attenuation for each voxel. Is at least O(n^3), something like O(n^5) actually, I think,
-    #     so can be slow. Maybe could possibly multithread this (?). Very slow actually.
-    # TODO: Need to have a look at this code and check see it works, seemed quite complicated.
-    #     : One would think that it needs to examine the attenuation drop off (the slope)
-    #     : Should really just be peak differential I would think (the steepest point), based
-    #     : on how it has been described to me before.
-    atten_c, mask, _ = pytdms.Heatmap_Int(intensity_array, voxC = voxC, voxB = voxB, voxA = voxA)
+    x_vals = np.arange(0, shape[1] // voxel_dimensions[1])
 
-    # Not sure what the point in this is.
-    masked_c = ma.array(atten_c, mask = mask)
-    masked_c = ma.compressed(masked_c) # Apparently returns all non-masked data as 1d array. 
-    masked_c[np.isnan(masked_c)] = 0
+    with tqdm.tqdm(total = result_shape[0]) as progress_bar:
+        for i_0 in range(0, shape[0] // voxel_dimensions[0]):
+            progress_bar.update(1)
+            for i_2 in range(0, shape[2] // voxel_dimensions[2]):
+                offset_0 = i_0 * voxel_dimensions[0]
+                offset_2 = i_2 * voxel_dimensions[2]
 
-    return atten_c
+                # These are our values running down the A scan.
+                mean_y_vals = []
 
-# Just find the maximum heatmap value down each projection. O(n^3), unavoidable I guess.
+                for i_1 in range(0, shape[1] // voxel_dimensions[1]):
+                    offset_1 = i_1 * voxel_dimensions[1]
+                    mean_y_vals.append(np.mean(rolled_intensity_array[
+                        offset_0 : offset_0 + voxel_dimensions[0],
+                        offset_1 : offset_1 + voxel_dimensions[1],
+                        offset_2 : offset_2 + voxel_dimensions[2]]))
+
+                with np.errstate(divide = 'ignore'):
+                    log_y_vals = np.log(mean_y_vals)
+
+                smooth_y_vals = scipy.signal.savgol_filter(log_y_vals, 31, 3)
+
+                # Populate the resultant voxel_array with the slopes.
+                for i_1 in range(0, (shape[1] // voxel_dimensions[1]) - 1):
+                    with np.errstate(invalid = 'ignore'):
+                        voxel_array[i_0, i_1, i_2] = (
+                            smooth_y_vals[i_1 + 1] - smooth_y_vals[i_1])
+
+    return voxel_array
+
+# Just find the maximum heatmap value down each projection.
 def build_heatmap_max_projection_array(heatmap_array):
     result = np.empty((heatmap_array.shape[0], heatmap_array.shape[2]))
 
@@ -340,6 +391,7 @@ def build_heatmap_max_projection_array(heatmap_array):
 
             # FIXME: Run from 5% in, to 2/3 down, bit hacky, could work out where the surface was rolled.
             # Maybe the depth thing in the example code stores this information. That would make sense.
+            # Yes, should have surface and depth. Should definitely pass this in.
             for k in range(int(heatmap_array.shape[1] * 0.05), int(heatmap_array.shape[1] * (2.0 / 3.0))):
                 max_atten = min(max_atten, heatmap_array[i, k, j])
             result[i, j] = max_atten
@@ -348,6 +400,7 @@ def build_heatmap_max_projection_array(heatmap_array):
 
 # TODO: Idea is to trace down from the top, find the maximum slope (differential).
 # Surely this is the best way of finding an attenuation drop off.
+# Doesn't require building of pre-existing array. Less memory usage etc. I guess.
 def build_max_differential_projection_array(intensity_array):
     pass
 
@@ -356,6 +409,7 @@ def build_max_differential_projection_array(intensity_array):
 # I don't really see what this is doing though, the resultant image is weird.
 def build_projection_array(intensity_array):
     pass
+
 
 # Remove the noise at the top of the intensity array.
 def remove_top_noise(intensity_array):
@@ -382,10 +436,13 @@ def find_surface(intensity_array, threshold):
     shape = intensity_array.shape
     surface_positions = np.empty((shape[0], shape[2]), dtype = np.int32)
 
-    for i, b_scan in enumerate(intensity_array):
-        surface = np.array(pytdms.surface_detect(b_scan, threshold = threshold, length = 5, skip = 5), dtype = np.int32)
+    with tqdm.tqdm(total = len(intensity_array)) as progress_bar:
+        for i, b_scan in enumerate(intensity_array):
+            progress_bar.update(1)
+            surface = np.array(pytdms.surface_detect(b_scan,
+                threshold = threshold, length = 5, skip = 5), dtype = np.int32)
 
-        surface_positions[i] = surface
+            surface_positions[i] = surface
 
     return surface_positions
 

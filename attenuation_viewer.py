@@ -5,7 +5,8 @@ import scipy.signal
 
 
 class AttenuationViewer:
-    def __init__(self, title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions):
+    def __init__(self, title, view_intensity_array, rolled_intensity_array,
+            heatmap_array, heatmap_bounds, projection_array, surface_positions):
         fig, ax = plt.subplots(2, 2, figsize = (12,6)) # Returns figure and an array of axis
         self.fig = fig
         self.ax = ax
@@ -16,6 +17,7 @@ class AttenuationViewer:
         self.view_intensity_array = view_intensity_array
         self.rolled_intensity_array = rolled_intensity_array
         self.heatmap_array = heatmap_array
+        self.heatmap_bounds = heatmap_bounds
         self.projection_array = projection_array
         self.surface_positions = surface_positions
 
@@ -51,8 +53,9 @@ class AttenuationViewer:
         axis = self.projection_axis
         axis.clear()
 
-        im_projection = axis.imshow(self.projection_array, cmap = 'jet_r', interpolation = 'none', aspect = 'auto',
-            vmax = 0, vmin= -0.06) # , extent=[0, b_length, depth,0])
+        im_projection = axis.imshow(self.projection_array,
+            cmap = 'jet_r', interpolation = 'none', aspect = 'auto',
+            vmin = self.heatmap_bounds[0], vmax = self.heatmap_bounds[1])
 
         axis.set_title('Projection')
 
@@ -96,8 +99,11 @@ class AttenuationViewer:
 
         a_scan_heatmap_axis.clear()
 
-        im_attenuation = a_scan_heatmap_axis.imshow(a_scan_heatmap, cmap = 'jet_r', interpolation = 'none', aspect = 'auto',
-            vmax = 0, vmin= -0.06) # , extent=[0,b_length,depth,0])
+        im_attenuation = a_scan_heatmap_axis.imshow(a_scan_heatmap,
+            cmap = 'jet_r', interpolation = 'none', aspect = 'auto',
+            vmin = self.heatmap_bounds[0], vmax = self.heatmap_bounds[1])
+            # , extent=[0,b_length,depth,0])
+
         if self.cbar_atten == None:
             self.cbar_atten = self.fig.colorbar(im_attenuation, ax = a_scan_heatmap_axis) #### make the colorbar
             self.cbar_atten.set_label('Attenuation coefficient', rotation = 270)
@@ -169,7 +175,8 @@ class AttenuationViewer:
             self.update()
 
 
-def view_attenuation(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions):
+def view_attenuation(title, view_intensity_array, rolled_intensity_array,
+        heatmap_array, heatmap_bounds, projection_array, surface_positions):
 
     #b_length = 600 * 0.02 # ????
     #depth = 500 * 0.01 / 1.4 # ????
@@ -179,21 +186,10 @@ def view_attenuation(title, view_intensity_array, rolled_intensity_array, heatma
 
     print('There are {} B-scans'.format(view_intensity_array.shape[0]))
 
-#    while True:
-#        a_scan = input("Enter scan to view: ") # A (?), check this.
-#        a_scan_num = -1
-#        try:
-#            a_scan_num = int(a_scan)
-#        except ValueError:
-#            print("invalid A scan num")
-#            break
-#            
-#        view_a_scan(a_scan_num, intensity_array, heatmap_array)
+    viewer = AttenuationViewer(title, view_intensity_array,
+        rolled_intensity_array, heatmap_array, heatmap_bounds,
+        projection_array, surface_positions)
 
-    viewer = AttenuationViewer(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions)
     viewer.show()
-
-
-
 
 

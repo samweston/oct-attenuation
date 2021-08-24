@@ -37,7 +37,7 @@ roll_surface = True
 view_mean_array = False
 view_rolled_intensity = False
 apply_power_law_transform = False
-heatmap_algorithm = 2 # 1 = Abi version, 2 = My version
+heatmap_algorithm = 3 # 1 = Abi version, 2 = My version, 3 = Smoothed A scans.
 
 # Example code set maximum intensity as 20000. Not sure why. math.inf, no threshold.
 maximum_intensity = math.inf # 20000
@@ -120,6 +120,7 @@ if view_mean_array:
 if roll_surface:
     threshold = np.mean(intensity_array)
     print('Using surface threshold:', threshold)
+    print('Calculating surface positions')
     surface_positions = library.find_surface(intensity_array, threshold)
     # Don't really like having two intensity_arrays sitting in memory, but w/e.
     rolled_intensity_array = library.build_rolled_intensity_array(intensity_array, surface_positions)
@@ -138,13 +139,21 @@ if apply_power_law_transform:
     rolled_intensity_array = library.power_law_transform(rolled_intensity_array)
 
 voxel_dimensions = None
+heatmap_bounds = (-0.06, 0) # (Min, Max)
 print('Building attenuation map')
 time_start = perf_counter()
 if heatmap_algorithm == 1:
-    heatmap_array = library.build_heatmap_array(rolled_intensity_array)
-else: # 2
+    heatmap_array = library.build_attenuation_map_1(rolled_intensity_array)
+elif heatmap_algorithm == 2:
     voxel_dimensions = (10, 20, 10)
-    heatmap_array = library.build_attenuation_map(rolled_intensity_array, voxel_dimensions)
+    heatmap_array = library.build_attenuation_map_2(
+        rolled_intensity_array, voxel_dimensions)
+elif heatmap_algorithm == 3:
+    voxel_dimensions = (10, 1, 10)
+    heatmap_array = library.build_attenuation_map_3(
+        rolled_intensity_array, voxel_dimensions)
+else:
+    raise Exception('Unexpected heatmap algorithm:', heatmap_algorithm)
 
 time_stop = perf_counter()
 print('Attenuation map dimensions: ' + str(heatmap_array.shape))
@@ -169,5 +178,7 @@ else:
     else:
         view_intensity_array = intensity_array
 
+attenuation_viewer.view_attenuation(title, view_intensity_array,
+    rolled_intensity_array, heatmap_array, heatmap_bounds, projection_array,
+    surface_positions)
 
-attenuation_viewer.view_attenuation(title, view_intensity_array, rolled_intensity_array, heatmap_array, projection_array, surface_positions)
