@@ -7,4 +7,5 @@ opencv-python >= 4.5.2.54
 psutil >= 5.8.0
 addcopyfighandler >= 3.0.0
 tqdm >= 4.62.2
+cython >= 0.29.24
 

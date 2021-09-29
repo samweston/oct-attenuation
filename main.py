@@ -4,6 +4,8 @@
 # An NPY file, representing the intensity matrix. OR,
 # A TDMS file, from labview. Reads raw 'Ch1' intensity data.
 
+import pyximport; pyximport.install()
+
 import os
 import numpy as np
 import psutil
@@ -14,8 +16,7 @@ import math
 from time import perf_counter
 
 import oct_library as library
-#import generate_heat_map
-#import generate_attenuation
+import file_library as file_library
 import attenuation_viewer
 
 # Library from physics department containing TDMS code.
@@ -42,7 +43,7 @@ def main():
     maximum_intensity = math.inf # 20000
     #minimum_intensity = 1000
 
-    output_directory = "C:\\Users\\swes043\\Honours\\OCT_Data\\test_output"
+    output_directory = '' # TODO: Not sure what this should be.
     #print_memory_usage()
 
 
@@ -67,7 +68,7 @@ def main():
         if not file_path.is_file():
             raise Exception("Input file path is not a file")
         if file_path.suffix.lower() == '.txt':
-            temp_intensity_array = library.load_txt_intensity_array(file_path)
+            temp_intensity_array = file_library.load_txt_intensity_array(file_path)
 
             # Assuming .txt input is from the 800nm system.
 
@@ -91,7 +92,7 @@ def main():
             b_scan_num = 250
 
             # Expecting Ch1 (?)
-            raw_array = library.read_tdms_array(file_path, a_scan_num, b_scan_num)
+            raw_array = file_library.read_tdms_array(file_path, a_scan_num, b_scan_num)
 
             temp_intensity_array = library.build_intensity_array(raw_array, True)
 
