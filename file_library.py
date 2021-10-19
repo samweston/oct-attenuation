@@ -33,6 +33,8 @@ import math
 from nptdms import TdmsFile
 import tqdm # Progress bar
 
+# Would prefer to remove this.
+import oct_library as library
 
 # Read txt array file into numpy array.
 def read_txt_array_file(file_path):
@@ -148,7 +150,7 @@ def load_txt_intensity_array(file_path):
 
             # Build the Intensity array.
             print('Building Intensity Array')
-            intensity_array = build_intensity_array(raw_array, False)
+            intensity_array = library.build_intensity_array(raw_array, False)
             np.save(intensity_cache_file_path, intensity_array)
 
         return intensity_array
