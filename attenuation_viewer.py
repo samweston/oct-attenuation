@@ -12,8 +12,11 @@ class AttenuationViewer:
         self.fig = fig
         self.ax = ax
         self.cbar_atten = None
+
+        self.a_scan_axis = self.ax[1][1]
         self.intensity_axis = self.ax[1][0]
         self.projection_axis = self.ax[0][0]
+        self.heatmap_axis = self.ax[0][1]
 
         self.view_intensity_array = view_intensity_array
         self.view_intensity_bounds = view_intensity_bounds
@@ -30,7 +33,7 @@ class AttenuationViewer:
         self.a_scan_num = 0 # Index along B scan (a scan number)
 
         self.title = title
-        self.draw_surface_positions = False
+        self.draw_surface_positions = True
 
         self.update()
 
@@ -86,7 +89,7 @@ class AttenuationViewer:
 
         intensity_axis.set_title('Scan ({}/{})'.format(self.scan_num, len(self.view_intensity_array) - 1))
         intensity_axis.set_xlabel('B-scan length') # (?)
-        intensity_axis.set_ylabel('A-scan length') # (?)
+        intensity_axis.set_ylabel('A-scan depth') # (?)
 
         # Draw the surface
         if self.draw_surface_positions and self.surface_positions is not None:
@@ -101,42 +104,39 @@ class AttenuationViewer:
     def update_heatmap(self):
         heatmap_index = int(self.scan_num * (len(self.heatmap_array) / len(self.view_intensity_array)))
         a_scan_heatmap = self.heatmap_array[heatmap_index]
-        a_scan_heatmap_axis = self.ax[0][1]
 
-        a_scan_heatmap_axis.clear()
+        self.heatmap_axis.clear()
 
-        im_attenuation = a_scan_heatmap_axis.imshow(a_scan_heatmap,
+        im_attenuation = self.heatmap_axis.imshow(a_scan_heatmap,
             cmap = 'jet_r', interpolation = 'none', aspect = 'auto',
             vmin = self.heatmap_bounds[0], vmax = self.heatmap_bounds[1])
             # , extent=[0,b_length,depth,0])
 
         if self.cbar_atten == None:
-            self.cbar_atten = self.fig.colorbar(im_attenuation, ax = a_scan_heatmap_axis) #### make the colorbar
+            self.cbar_atten = self.fig.colorbar(im_attenuation, ax = self.heatmap_axis) #### make the colorbar
             self.cbar_atten.set_label('Attenuation coefficient', rotation = 270)
 
-        a_scan_heatmap_axis.set_title('Attenuation-Heatmap ({}/{})'.format(heatmap_index, len(self.heatmap_array) - 1))
-        a_scan_heatmap_axis.set_xlabel('B-scan Length')
-        a_scan_heatmap_axis.set_ylabel('Depth')
+        self.heatmap_axis.set_title('Attenuation-Heatmap ({}/{})'.format(heatmap_index, len(self.heatmap_array) - 1))
+        self.heatmap_axis.set_xlabel('B-scan Length')
+        self.heatmap_axis.set_ylabel('Depth')
 
     def update_a_scan_attenuation(self):
         a_scan = self.rolled_intensity_array[self.scan_num] # Use the rolled array (use surface).
 
-        atten_graph_axis = self.ax[1][1]
-
-        atten_graph_axis.clear()
+        self.a_scan_axis.clear()
 
         # Plot the logarithm line.
         with np.errstate(divide = 'ignore'): # Ignore divide by zeros here.
             y_val = np.log(a_scan[:, self.a_scan_num]) # Takes the log of the intensity values running down the A scan.
         x_val = np.arange(0, np.size(y_val))
 
-        atten_graph_axis.plot(x_val, y_val)
+        self.a_scan_axis.plot(x_val, y_val)
 
         # Plot smoothed line using Savitsky Golay filter
         # Not sure what the best parameters for window size and polynomial
         #   order should be. 31 and 3 seem to work alright.
         y_smooth_val = scipy.signal.savgol_filter(y_val, 31, 3)
-        atten_graph_axis.plot(x_val, y_smooth_val)
+        self.a_scan_axis.plot(x_val, y_smooth_val)
 
         # Plot a fit line? (Slope(?))
         draw_fit_line = False
@@ -144,12 +144,12 @@ class AttenuationViewer:
             x_range = np.arange(50, 120) # Eh, fitting between these values. Not sure why. Just arbitrary.
             with np.errstate(divide = 'ignore'): # Ignore divide by zeros here.
                 fit_curve = np.polyfit(x_range, np.log(a_scan[0:len(x_range), self.a_scan_num]), 1) # Least squares polynomial fit
-            atten_graph_axis.plot(x_range, fit_curve[0] * x_range + fit_curve[1]) # Draw the orange thing, shows part of the polynomial fit curve.
+            self.a_scan_axis.plot(x_range, fit_curve[0] * x_range + fit_curve[1]) # Draw the orange thing, shows part of the polynomial fit curve.
             #atten.append(-10000 * p[0])
 
-        atten_graph_axis.set_title('Attenuation per A-scan')
-        atten_graph_axis.set_xlabel('A-scan length')
-        atten_graph_axis.set_ylabel('Log Intensity')
+        self.a_scan_axis.set_title('Attenuation per A-scan')
+        self.a_scan_axis.set_xlabel('A-scan depth')
+        self.a_scan_axis.set_ylabel('Log Intensity')
 
     def show(self):
         plt.show()

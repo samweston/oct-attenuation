@@ -272,13 +272,16 @@ def find_surface(intensity_array, threshold):
     shape = intensity_array.shape
     surface_positions = np.empty((shape[0], shape[2]), dtype = np.int32)
 
+    length = 5 # TODO: What is this?
+    skip = 5   # TODO: What is this?
+
     with tqdm.tqdm(total = len(intensity_array)) as progress_bar:
         for i, b_scan in enumerate(intensity_array):
             progress_bar.update(1)
             surface = np.array(pytdms.surface_detect(b_scan,
-                threshold = threshold, length = 5, skip = 5), dtype = np.int32)
+                threshold = threshold, length = length, skip = skip), dtype = np.int32)
 
-            surface_positions[i] = surface
+            surface_positions[i] = surface - (length + skip)
 
     return surface_positions
 

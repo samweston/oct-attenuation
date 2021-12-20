@@ -1,6 +1,7 @@
 
 __pycache__/
 venv/
+.venv/
 pypy-venv/
 *.swp
 
