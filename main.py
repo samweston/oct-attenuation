@@ -37,7 +37,7 @@ def main():
     apply_power_law_transform = False
 
     view_intensity_bounds = (0, 20000) # (Min, Max)
-    heatmap_algorithm = 3 # 1 = Abi version, 2 = My version, 3 = Smoothed A scans.
+    heatmap_algorithm = 2 # 1 = Abi version, 2 = My version, 3 = Smoothed A scans.
 
     # Example code set maximum intensity as 20000. Not sure why. math.inf, no threshold.
     maximum_intensity = math.inf # 20000

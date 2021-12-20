@@ -30,6 +30,7 @@ class AttenuationViewer:
         self.a_scan_num = 0 # Index along B scan (a scan number)
 
         self.title = title
+        self.draw_surface_positions = False
 
         self.update()
 
@@ -84,11 +85,11 @@ class AttenuationViewer:
             #, extent=[0, b_length, depth, 0])
 
         intensity_axis.set_title('Scan ({}/{})'.format(self.scan_num, len(self.view_intensity_array) - 1))
-        intensity_axis.set_xlabel('B-scan length (??)') # (?)
-        intensity_axis.set_ylabel('A-scan length (??)') # (?)
+        intensity_axis.set_xlabel('B-scan length') # (?)
+        intensity_axis.set_ylabel('A-scan length') # (?)
 
         # Draw the surface
-        if self.surface_positions is not None:
+        if self.draw_surface_positions and self.surface_positions is not None:
             b_scan_surface_positions = self.surface_positions[self.scan_num]
             intensity_axis.plot(range(0, len(b_scan_surface_positions)), b_scan_surface_positions, '-', color='orange')
 
@@ -114,8 +115,8 @@ class AttenuationViewer:
             self.cbar_atten.set_label('Attenuation coefficient', rotation = 270)
 
         a_scan_heatmap_axis.set_title('Attenuation-Heatmap ({}/{})'.format(heatmap_index, len(self.heatmap_array) - 1))
-        a_scan_heatmap_axis.set_xlabel('B-scan Length (??)')
-        a_scan_heatmap_axis.set_ylabel('Depth (??)')
+        a_scan_heatmap_axis.set_xlabel('B-scan Length')
+        a_scan_heatmap_axis.set_ylabel('Depth')
 
     def update_a_scan_attenuation(self):
         a_scan = self.rolled_intensity_array[self.scan_num] # Use the rolled array (use surface).
@@ -147,7 +148,7 @@ class AttenuationViewer:
             #atten.append(-10000 * p[0])
 
         atten_graph_axis.set_title('Attenuation per A-scan')
-        atten_graph_axis.set_xlabel('A-scan length (??)')
+        atten_graph_axis.set_xlabel('A-scan length')
         atten_graph_axis.set_ylabel('Log Intensity')
 
     def show(self):
