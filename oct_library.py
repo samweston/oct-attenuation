@@ -281,9 +281,10 @@ def find_surface(intensity_array, threshold):
             surface = np.array(pytdms.surface_detect(b_scan,
                 threshold = threshold, length = length, skip = skip), dtype = np.int32)
 
-            surface_positions[i] = surface - (length + skip)
+            surface_positions[i] = surface
 
-    return surface_positions
+    # Second positions are for drawing, this is not offset by a single step.
+    return surface_positions, surface_positions - (length + skip)
 
 def build_rolled_intensity_array(intensity_array, surface_positions):
     rolled_intensity_array = np.empty(intensity_array.shape)

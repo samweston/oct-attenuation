@@ -129,7 +129,7 @@ def main():
         threshold = np.mean(intensity_array)
         print('Using surface threshold:', threshold)
         print('Calculating surface positions')
-        surface_positions = library.find_surface(intensity_array, threshold)
+        surface_positions, surface_positions_for_draw = library.find_surface(intensity_array, threshold)
         # Don't really like having two intensity_arrays sitting in memory, but w/e.
         rolled_intensity_array = library.build_rolled_intensity_array(intensity_array, surface_positions)
 
@@ -182,13 +182,13 @@ def main():
     else:
         if view_rolled_intensity:
             view_intensity_array = rolled_intensity_array
-            surface_positions = None
+            surface_positions_for_draw = None
         else:
             view_intensity_array = intensity_array
 
     attenuation_viewer.view_attenuation(title, view_intensity_array,
         view_intensity_bounds, rolled_intensity_array, heatmap_array,
-        heatmap_bounds, projection_array, surface_positions)
+        heatmap_bounds, projection_array, surface_positions_for_draw)
 
 if __name__ == "__main__":
     main()

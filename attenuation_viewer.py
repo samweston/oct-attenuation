@@ -7,7 +7,7 @@ import scipy.signal
 class AttenuationViewer:
     def __init__(self, title, view_intensity_array, view_intensity_bounds,
             rolled_intensity_array, heatmap_array, heatmap_bounds,
-            projection_array, surface_positions):
+            projection_array, surface_positions_for_draw):
         fig, ax = plt.subplots(2, 2, figsize = (12,6)) # Returns figure and an array of axis
         self.fig = fig
         self.ax = ax
@@ -24,7 +24,7 @@ class AttenuationViewer:
         self.heatmap_array = heatmap_array
         self.heatmap_bounds = heatmap_bounds
         self.projection_array = projection_array
-        self.surface_positions = surface_positions
+        self.surface_positions_for_draw = surface_positions_for_draw
 
         scroll_cid = fig.canvas.mpl_connect('scroll_event', self.on_scroll)
         click_cid = fig.canvas.mpl_connect('button_press_event', self.on_click)
@@ -92,8 +92,8 @@ class AttenuationViewer:
         intensity_axis.set_ylabel('A-scan depth') # (?)
 
         # Draw the surface
-        if self.draw_surface_positions and self.surface_positions is not None:
-            b_scan_surface_positions = self.surface_positions[self.scan_num]
+        if self.draw_surface_positions and self.surface_positions_for_draw is not None:
+            b_scan_surface_positions = self.surface_positions_for_draw[self.scan_num]
             intensity_axis.plot(range(0, len(b_scan_surface_positions)), b_scan_surface_positions, '-', color='orange')
 
         # Draw the line showing  the position of the a scan attenuation graph.
@@ -183,7 +183,7 @@ class AttenuationViewer:
 
 def view_attenuation(title, view_intensity_array, view_intensity_bounds,
         rolled_intensity_array, heatmap_array, heatmap_bounds,
-        projection_array, surface_positions):
+        projection_array, surface_positions_for_draw):
 
     #b_length = 600 * 0.02 # ????
     #depth = 500 * 0.01 / 1.4 # ????
@@ -195,7 +195,7 @@ def view_attenuation(title, view_intensity_array, view_intensity_bounds,
 
     viewer = AttenuationViewer(title, view_intensity_array,
         view_intensity_bounds, rolled_intensity_array, heatmap_array,
-        heatmap_bounds, projection_array, surface_positions)
+        heatmap_bounds, projection_array, surface_positions_for_draw)
 
     viewer.show()
 
