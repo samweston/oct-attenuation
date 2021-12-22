@@ -50,6 +50,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=pathlib.Path, action='append', nargs='+')
     parser.add_argument("--output_directory", type=pathlib.Path)
+    parser.add_argument('--title', type=str)
+    parser.add_argument('--a_scan_num', type=int)
+    parser.add_argument('--b_scan_num', type=int)
 
     arguments = parser.parse_args()
 
@@ -171,11 +174,14 @@ def main():
     projection_array = library.build_heatmap_max_projection_array(heatmap_array)
     #print(projection_array.shape)
 
-    title = 'Path: ' + file_paths_display_string(file_paths) + '\n'
-    title += 'Heatmap Alg: ' + str(heatmap_algorithm)
-    title += ',Intensity Dim: ' + str(intensity_array.shape)
-    if voxel_dimensions:
-        title += ',Voxel Dim: ' + str(voxel_dimensions)
+    if arguments.title is None:
+        title = 'Path: ' + file_paths_display_string(file_paths) + '\n'
+        title += 'Heatmap Alg: ' + str(heatmap_algorithm)
+        title += ',Intensity Dim: ' + str(intensity_array.shape)
+        if voxel_dimensions:
+            title += ',Voxel Dim: ' + str(voxel_dimensions)
+    else:
+        title = arguments.title
 
     if view_mean_array:
         view_intensity_array = intensity_mean_array
@@ -188,7 +194,9 @@ def main():
 
     attenuation_viewer.view_attenuation(title, view_intensity_array,
         view_intensity_bounds, rolled_intensity_array, heatmap_array,
-        heatmap_bounds, projection_array, surface_positions_for_draw)
+        heatmap_bounds, projection_array, surface_positions_for_draw,
+        a_scan_num=arguments.a_scan_num,
+        b_scan_num=arguments.b_scan_num)
 
 if __name__ == "__main__":
     main()
